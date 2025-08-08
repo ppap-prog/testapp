@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/chat.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "15mb",
+        "pythonVersion": "3.11"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/chat",
+      "dest": "api/chat.py",
+      "methods": ["POST"]
+    },
+    {
+      "src": "/api/health",
+      "dest": "api/chat.py",
+      "methods": ["GET"]
+    },
+    {
+      "src": "/(.*)",
+      "dest": "public/$1"
+    }
+  ],
+  "regions": ["hkg1"]
+}

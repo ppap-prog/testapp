@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek AI 聊天助手</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>DeepSeek AI 聊天助手</h1>
+            <div class="status" id="status-indicator">正在连接服务...</div>
+        </header>
+        
+        <div id="chat-box" class="chat-box"></div>
+        
+        <div class="input-area">
+            <input 
+                type="text" 
+                id="message-input" 
+                placeholder="输入消息..." 
+                autocomplete="off"
+                disabled
+            >
+            <button id="send-btn" disabled>
+                <span>发送</span>
+                <span class="loading-spinner" id="spinner" style="display:none"></span>
+            </button>
+        </div>
+        
+        <footer>
+            <p>ppap</p>
+        </footer>
+    </div>
+
+    <script>
+        // DOM元素引用
+        const chatBox = document.getElementById('chat-box');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const statusIndicator = document.getElementById('status-indicator');
+        const spinner = document.getElementById('spinner');
+        
+        // 检查服务状态
+        async function checkServiceStatus() {
+            try {
+                statusIndicator.textContent = "检查服务状态...";
+                const response = await fetch('/api/health');
+                
+                if (!response.ok) {
+                    throw new Error(`服务不可用: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                statusIndicator.textContent = `服务状态: ${data.status} | Python ${data.python_version}`;
+                statusIndicator.className = 'status active';
+                
+                // 启用输入
+                messageInput.disabled = false;
+                sendBtn.disabled = false;
+                messageInput.placeholder = "输入消息...";
+                messageInput.focus();
+                
+                // 初始问候
+                addMessage('ai', '你好！我是AI助手，有什么我可以帮你的吗？');
+                
+            } catch (error) {
+                statusIndicator.textContent = `服务离线: ${error.message}`;
+                statusIndicator.className = 'status error';
+                addMessage('ai', '服务暂时不可用，请稍后再试。');
+            }
+        }
+        
+        // 添加消息到聊天框
+        function addMessage(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            messageDiv.innerHTML = `<div class="message-content">${content}</div>`;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+        
+        // 发送消息
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message || messageInput.disabled) return;
+            
+            // 显示用户消息
+            addMessage('user', message);
+            messageInput.value = '';
+            
+            // 禁用输入并显示加载状态
+            messageInput.disabled = true;
+            sendBtn.disabled = true;
+            spinner.style.display = 'inline-block';
+            
+            try {
+                // 发送请求
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `请求失败: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                addMessage('ai', data.reply);
+                
+            } catch (error) {
+                addMessage('ai', `错误: ${error.message}`);
+            } finally {
+                // 恢复输入
+                messageInput.disabled = false;
+                sendBtn.disabled = false;
+                spinner.style.display = 'none';
+                messageInput.focus();
+            }
+        }
+        
+        // 事件监听
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+        
+        // 初始化
+        window.onload = checkServiceStatus;
+    </script>
+</body>
+</html>
